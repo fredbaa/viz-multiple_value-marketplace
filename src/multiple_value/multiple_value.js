@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
-import {ComparisonDataPoint} from './ComparisonDataPoint';
+import { ComparisonDataPoint } from './ComparisonDataPoint';
 import ReactHtmlParser from 'react-html-parser';
 import DOMPurify from 'dompurify';
 
@@ -70,26 +70,83 @@ const DataPointValue = styled.div`
   }
 `;
 
+function formatTime(seconds) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600).toString().padStart(2, '0');
+  const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+  const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+  return (d > 0 ? `${d}:` : '') + `${h}:${m}:${s}`;
+}
+
+function isTimeFormat(value) {
+  return /^\d{1,2}:\d{2}:\d{2}$/.test(value) || /^\d{1,3}:\d{2}:\d{2}:\d{2}$/.test(value);
+}
+
+function parseTimeString(value) {
+  const parts = value.split(':').map(Number);
+  if (parts.length === 3) {
+    const [h, m, s] = parts;
+    return h * 3600 + m * 60 + s;
+  } else if (parts.length === 4) {
+    const [d, h, m, s] = parts;
+    return d * 86400 + h * 3600 + m * 60 + s;
+  }
+  return null;
+}
+
 class MultipleValue extends React.PureComponent {
   constructor(props) {
     super(props);
-
-    this.state = {};
-    this.state.groupingLayout = 'horizontal';
-    this.state.fontSize = this.calculateFontSize();
+    this.state = {
+      groupingLayout: 'horizontal',
+      fontSize: this.calculateFontSize(),
+      clocks: {},
+    };
+    this.clockRefs = {};
   }
 
   componentDidMount() {
     window.addEventListener('resize', this.recalculateSizing);
+    this.startClocks();
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps) {
+    if (prevProps.data !== this.props.data) {
+      this.clearClocks();
+      this.startClocks();
+    }
     this.recalculateSizing();
   }
 
   componentWillUnmount() {
     window.removeEventListener('resize', this.recalculateSizing);
+    this.clearClocks();
   }
+
+  startClocks = () => {
+    const { data } = this.props;
+    data.forEach(dataPoint => {
+      const key = dataPoint.name;
+      const ref = this.clockRefs[key];
+      if (ref && dataPoint.formattedValue && isTimeFormat(dataPoint.formattedValue)) {
+        let totalSeconds = parseTimeString(dataPoint.formattedValue);
+        if (totalSeconds !== null) {
+          const interval = setInterval(() => {
+            totalSeconds += 1;
+            if (ref) ref.innerText = formatTime(totalSeconds);
+          }, 1000);
+          this.setState(prev => ({
+            clocks: { ...prev.clocks, [key]: interval },
+          }));
+        }
+      }
+    });
+  };
+
+  clearClocks = () => {
+    Object.values(this.state.clocks).forEach(clearInterval);
+    this.setState({ clocks: {} });
+  };
 
   getLayout = () => {
     let CONFIG = this.props.config;
@@ -148,7 +205,7 @@ class MultipleValue extends React.PureComponent {
   };
 
   render() {
-    const {config, data} = this.props;
+    const { config, data } = this.props;
     let message;
     let display = false;
 
@@ -156,7 +213,7 @@ class MultipleValue extends React.PureComponent {
       <DataPointsWrapper
         layout={this.getLayout()}
         font={config['grouping_font']}
-        style={{fontSize: `${this.state.fontSize}em`}}
+        style={{ fontSize: `${this.state.fontSize}em` }}
       >
         {data.map((dataPoint, index) => {
           const compDataPoint = dataPoint.comparison;
@@ -164,13 +221,7 @@ class MultipleValue extends React.PureComponent {
             display = false;
           } else if (compDataPoint === 0 || compDataPoint === null) {
             display = true;
-            message = (
-              <a>
-                {
-                  'Comparison point can not be zero. Adjust the value to continue.'
-                }
-              </a>
-            );
+            message = <a>{'Comparison point can not be zero. Adjust the value to continue.'}</a>;
           }
           return (
             <>
@@ -182,26 +233,18 @@ class MultipleValue extends React.PureComponent {
                 key={`group_${dataPoint.name}`}
                 layout={this.getLayout()}
               >
-                <DataPoint
-                  titlePlacement={config[`title_placement_${dataPoint.name}`]}
-                >
+                <DataPoint titlePlacement={config[`title_placement_${dataPoint.name}`]}>
                   {config[`show_title_${dataPoint.name}`] === false ? null : (
                     <DataPointTitle color={config[`style_${dataPoint.name}`]}>
-                      {config[`title_override_${dataPoint.name}`] ||
-                        dataPoint.label}
+                      {config[`title_override_${dataPoint.name}`] || dataPoint.label}
                     </DataPointTitle>
                   )}
                   <DataPointValue
                     color={config[`style_${dataPoint.name}`]}
-                    onClick={() => {
-                      this.handleClick(dataPoint, event);
-                    }}
+                    ref={ref => (this.clockRefs[dataPoint.name] = ref)}
                     layout={this.getLayout()}
-                  >
-                    {dataPoint.html
-                      ? ReactHtmlParser(DOMPurify.sanitize(dataPoint.html))
-                      : dataPoint.formattedValue}
-                  </DataPointValue>
+                    onClick={() => this.handleClick(dataPoint, event)}
+                  />
                 </DataPoint>
                 {this.checkData(compDataPoint) ? null : (
                   <ComparisonDataPoint

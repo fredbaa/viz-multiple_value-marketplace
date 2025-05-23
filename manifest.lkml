@@ -1,7 +1,7 @@
 project_name: "viz-multiple_value-marketplace"
 
 constant: VIS_LABEL {
-  value: "Multiple Value2"
+  value: "Multiple Value Testing"
   export: override_optional
 }
 

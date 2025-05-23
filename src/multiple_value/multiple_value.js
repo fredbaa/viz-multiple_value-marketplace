@@ -133,6 +133,7 @@ class MultipleValue extends React.PureComponent {
         if (dataPoint.formattedValue && isTimeFormat(dataPoint.formattedValue)) {
           let totalSeconds = parseTimeString(dataPoint.formattedValue);
           if (totalSeconds !== null) {
+            ref.innerText = formatTime(totalSeconds); // initial render
             const interval = setInterval(() => {
               totalSeconds += 1;
               if (ref) ref.innerText = formatTime(totalSeconds);
@@ -155,7 +156,7 @@ class MultipleValue extends React.PureComponent {
   };
 
   getLayout = () => {
-    const CONFIG = this.props.config;
+    const CONFIG = this.props.config || {};
     const fallbackLayout = 'horizontal';
 
     if (
@@ -192,7 +193,7 @@ class MultipleValue extends React.PureComponent {
     const EM = 16;
     const groupingLayout = window.innerWidth >= 768 ? 'horizontal' : 'vertical';
 
-    let CONFIG = this.props.config;
+    let CONFIG = this.props.config || {};
 
     var font_check = CONFIG.font_size_main;
     var font_size =

@@ -97,9 +97,10 @@ function parseTimeString(value) {
 class MultipleValue extends React.PureComponent {
   constructor(props) {
     super(props);
+    const initialGroupingLayout = 'horizontal';
     this.state = {
-      groupingLayout: 'horizontal',
-      fontSize: this.calculateFontSize(),
+      groupingLayout: initialGroupingLayout,
+      fontSize: this.calculateFontSize(initialGroupingLayout),
       clocks: {},
     };
     this.clockRefs = {};
@@ -163,9 +164,8 @@ class MultipleValue extends React.PureComponent {
     return Math.max(window.innerWidth, window.innerHeight);
   };
 
-  calculateFontSize = () => {
-    const multiplier =
-      this.state.groupingLayout === 'horizontal' ? 0.015 : 0.02;
+  calculateFontSize = (layout = this.state.groupingLayout) => {
+    const multiplier = layout === 'horizontal' ? 0.015 : 0.02;
     return Math.round(this.getWindowSize() * multiplier);
   };
 

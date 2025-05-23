@@ -129,16 +129,21 @@ class MultipleValue extends React.PureComponent {
     data.forEach(dataPoint => {
       const key = dataPoint.name;
       const ref = this.clockRefs[key];
-      if (ref && dataPoint.formattedValue && isTimeFormat(dataPoint.formattedValue)) {
-        let totalSeconds = parseTimeString(dataPoint.formattedValue);
-        if (totalSeconds !== null) {
-          const interval = setInterval(() => {
-            totalSeconds += 1;
-            if (ref) ref.innerText = formatTime(totalSeconds);
-          }, 1000);
-          this.setState(prev => ({
-            clocks: { ...prev.clocks, [key]: interval },
-          }));
+      if (ref) {
+        if (dataPoint.formattedValue && isTimeFormat(dataPoint.formattedValue)) {
+          let totalSeconds = parseTimeString(dataPoint.formattedValue);
+          if (totalSeconds !== null) {
+            const interval = setInterval(() => {
+              totalSeconds += 1;
+              if (ref) ref.innerText = formatTime(totalSeconds);
+            }, 1000);
+            this.setState(prev => ({
+              clocks: { ...prev.clocks, [key]: interval },
+            }));
+          }
+        } else {
+          // Not a time format, render value as-is
+          ref.innerHTML = DOMPurify.sanitize(dataPoint.html || dataPoint.formattedValue);
         }
       }
     });
@@ -150,14 +155,16 @@ class MultipleValue extends React.PureComponent {
   };
 
   getLayout = () => {
-    let CONFIG = this.props.config;
+    const CONFIG = this.props.config;
+    const fallbackLayout = 'horizontal';
+
     if (
       CONFIG['orientation'] === 'auto' ||
       typeof CONFIG['orientation'] === 'undefined'
     ) {
-      return this.state.groupingLayout;
+      return this.state.groupingLayout || fallbackLayout;
     }
-    return CONFIG['orientation'];
+    return CONFIG['orientation'] || fallbackLayout;
   };
 
   getWindowSize = () => {
@@ -191,7 +198,7 @@ class MultipleValue extends React.PureComponent {
     var font_size =
       font_check !== '' && typeof font_check !== 'undefined'
         ? CONFIG.font_size_main
-        : this.calculateFontSize();
+        : this.calculateFontSize(groupingLayout);
     font_size = font_size / EM;
 
     this.setState({
